@@ -1,0 +1,19 @@
+<Configuration
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../FrankConfig.xsd"
+>
+    <Adapter name="IngAdapter">
+        <Receiver name="IngReceiver">
+            <ApiListener name="IngListener" uriPattern="IngService" />
+        </Receiver>
+        
+        <Pipeline>
+            <Exits>
+                <Exit name="Success" state="SUCCESS" />
+                <Exit name="Statuscode: 4xx" state="ERROR" />
+                <Exit name="Statuscode: 5xx" state="ERROR" />
+            </Exits>
+            <FixedResultPipe name="HelloWorld" returnString="Hello World!" />
+        </Pipeline>
+    </Adapter>
+</Configuration>
