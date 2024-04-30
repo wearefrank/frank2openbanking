@@ -19,6 +19,75 @@
         getInputFromFixedValue="&lt;dummy /&gt;">
       </XsltPipe>
 
+      <!-- Store the content of the sandbox certificate and key in a session key-->
+      <LocalFileSystemPipe name="ReadSigningCertificate"
+        action="read"
+        filename="${configurations.directory}/IngConfiguration/certs/example_client_signing.cer"
+        storeResultInSessionKey="SigningCertificate" />
+      <LocalFileSystemPipe name="ReadSigningKey"
+        action="read"
+        filename="${configurations.directory}/IngConfiguration/certs/example_client_signing.key"
+        storeResultInSessionKey="SigningKey" />
+
+      <!-- Create hash the payload with sha256 -->
+      <ChecksumPipe
+        name="SHA256"
+        type="SHA256"
+        getInputFromFixedValue="grant_type=client_credentials"
+        storeResultInSessionKey="HashedPayload" />
+      <!-- convert the hexstring to base64 with a  -->
+      <SenderPipe name="HexStringToBase64" storeResultInSessionKey="PayloadDigest">
+        <JavascriptSender
+          jsFileName="JavaScript/HexStringToBase64.js"
+          jsFunctionName="hexToBase64">
+          <Param name="hexString" sessionKey="HashedPayload" />
+        </JavascriptSender>
+      </SenderPipe>
+
+      <!-- Create the signature string -->
+      <FixedResultPipe
+        name="CreateSignatureString"
+        storeResultInSessionKey="SignatureString"
+        returnString="SignatureString"
+        replaceFixedParams="true">
+        <Param name="SignatureString" 
+          pattern="(request-target): post /oauth2/token&#xa;date: {FormattedDateTime}&#xa;digest: SHA-256={PayloadDigest}" />
+      </FixedResultPipe>
+      <!-- Sign the signature -->
+      <SignaturePipe
+        name="SignatureStringSigner"
+        keystore="/certs/signing.p12"
+        keystoreAlias="ing"
+        keystorePassword="Password123!"
+        storeResultInSessionKey="Signature"
+        getInputFromSessionKey="SignatureString"
+      />
+
+      <!-- Request an authorization token -->
+      <SenderPipe name="ing-first-request" storeResultInSessionKey="res">
+        <HttpSender
+          url="https://api.sandbox.ing.com/oauth2/token"
+          methodType="POST"
+          contentType="application/x-www-form-urlencoded"
+          postType="URLENCODED"
+          headersParams="Accept, Content-Type, Digest, Date, TPP-Signature-Certificate, authorization"
+          treatInputMessageAsParameters="false"
+          keystore="/certs/tls.p12"
+          keystoreAlias="ing"
+          keystorePassword="Password123!"
+          keystoreType="PKCS12" />
+        <Param name="Date" sessionKey="FormattedDateTime" />
+        <Param name="Digest" pattern="SHA-256={PayloadDigest}" />
+        <Param name="TPP-Signature-Certificate" sessionKey="SigningCertificate" />
+        <Param name="authorization"
+          pattern='Signature keyId="SN=546212fb",algorithm="rsa-sha256",headers="(request-target) date digest",signature="{Signature}"' />
+        <Param name="Accept" value="application/json" />
+        <Param name="Content-Type" value="application/x-www-form-urlencoded" />
+        <Param name="grant_type" value="client_credentials" />
+
+        <Forward name="Failure" path="ERROR" />
+      </SenderPipe>
+
     </Pipeline>
   </Adapter>
 </Configuration>
