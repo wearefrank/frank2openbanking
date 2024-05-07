@@ -2,9 +2,9 @@
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:noNamespaceSchemaLocation="../FrankConfig.xsd"
 >
-  <Adapter name="IngAdapter">
-    <Receiver name="IngReceiver">
-      <ApiListener name="IngListener" uriPattern="ing" />
+  <Adapter name="IngAuthorizationAdapter">
+    <Receiver name="IngAuthorizationReceiver">
+      <ApiListener name="IngAuthorizationRequestListener" uriPattern="ing" headerParams="Location" />
     </Receiver>
 
     <Pipeline>
@@ -100,14 +100,17 @@
       </SenderPipe>
 
       <!-- Parse the response -->
-      <JsonValidatorPipe name="IngAuthorizationTokenResponseValidator" schema="schemas/ingAuthorizationTokenResponse.json">
+      <JsonValidatorPipe name="IngAuthorizationTokenResponseValidator"
+        schema="schemas/ingAuthorizationTokenResponse.json">
         <Forward name="failure" path="ParseError" />
       </JsonValidatorPipe>
 
       <!-- Extract and store required data from the response -->
       <JsonPipe name="JsonToXml" direction="JSON2XML" />
-      <XsltPipe name="TokenExtractor" xpathExpression="/root/access_token" storeResultInSessionKey="AccessToken" preserveInput="true" />
-      <XsltPipe name="ClientIdExtractor" xpathExpression="/root/client_id" storeResultInSessionKey="ClientId" />
+      <XsltPipe name="TokenExtractor" xpathExpression="/root/access_token"
+        storeResultInSessionKey="AccessToken" preserveInput="true" />
+      <XsltPipe name="ClientIdExtractor" xpathExpression="/root/client_id"
+        storeResultInSessionKey="ClientId" />
 
       <!-- Request url for the authorization server -->
       <!--  -->
@@ -115,15 +118,6 @@
       <!--  -->
       <!--  -->
       <!--  -->
-
-      <FixedResultPipe name="UrlRequestPath" returnString="UrlRequestPath" storeResultInSessionKey="UrlRequestPath">
-        <Param name="UrlRequestPath"
-          pattern="https://api.sandbox.ing.com/oauth2/authorization-server-url?scope=${Scope}&#38;redirect_uri=${RedirectUri}&#38;country_code=${CountryCode}">
-          <Param name="Scope" value="payment-accounts%3Abalances%3Aview%20payment-accounts%3Atransactions%3Aview" />
-          <Param name="RedirectUri" value="https://www.example.com" />
-          <Param name="CountryCode" value="NL" />
-        </Param>
-      </FixedResultPipe>
 
       <!-- fetch the GMT Time from an xslt funcion -->
       <XsltPipe name="GMT Date Getter UrlRequest" storeResultInSessionKey="FormattedDateTime"
@@ -147,13 +141,15 @@
       </SenderPipe>
 
       <!-- Create the signature string -->
+      <!-- Keep in mind that encoding occurs on the request url, so in order to keep -->
+      <!-- the signature the same as the request, the url has to be pre-encoded -->
       <FixedResultPipe
         name="CreateEmptySignatureString"
         storeResultInSessionKey="SignatureString"
         returnString="SignatureString"
         replaceFixedParams="true">
-        <Param name="SignatureString" 
-          pattern="(request-target): get /oauth2/authorization-server-url?scope=payment-accounts%3Abalances%3Aview%20payment-accounts%3Atransactions%3Aview&#38;redirect_uri=https://www.example.com&#38;country_code=NL&#xa;date: {FormattedDateTime}&#xa;digest: SHA-256=47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=" />
+        <Param name="SignatureString"
+          pattern="(request-target): get /oauth2/authorization-server-url?scope=payment-accounts%3Abalances%3Aview&amp;redirect_uri=https%3A%2F%2Fwww.example.com&amp;country_code=NL&#xa;date: {FormattedDateTime}&#xa;digest: SHA-256=47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=" />
       </FixedResultPipe>
 
       <SignaturePipe
@@ -165,8 +161,6 @@
         getInputFromSessionKey="SignatureString"
       />
 
-      
-
       <!-- request a url -->
       <!-- url="https://api.sandbox.ing.com/oauth2/authorization-server-url" -->
       <SenderPipe name="IngUrlRequest">
@@ -174,28 +168,37 @@
           url="https://api.sandbox.ing.com/oauth2/authorization-server-url"
           methodType="GET"
           treatInputMessageAsParameters="false"
-          headersParams="Accept, Digest, Date, user-agent, Authorization, Signature"
-          keystore="/certs/tls.p12"
-          keystoreAlias="ing"
-          keystorePassword="Password123!"/>
+          headersParams="Accept, Digest, Date, user-agent, Authorization, Signature" />
 
-        <Param name="scope" value="payment-accounts:balances:view"/>
-        <Param name="redirect_uri" value="https://www.example.com"/>
-        <Param name="country_code" value="NL"/>
+        <Param name="scope" value="payment-accounts:balances:view" />
+        <Param name="redirect_uri" value="https://www.example.com" />
+        <Param name="country_code" value="NL" />
 
         <Param name="Date" sessionKey="FormattedDateTime" />
         <Param name="user-agent" value="frank2openbanking 0.0.1" />
         <Param name="Digest" pattern="SHA-256=47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=" />
         <Param name="Signature"
-        pattern='keyId="{ClientId}",algorithm="rsa-sha256",headers="(request-target) date digest",signature="{Signature}"' />
-        <Param name="Authorization"
-          pattern="Bearer {AccessToken}"/>
+          pattern='keyId="{ClientId}",algorithm="rsa-sha256",headers="(request-target) date digest",signature="{Signature}"' />
+        <Param name="Authorization" pattern="Bearer {AccessToken}" />
         <Param name="Accept" value="application/json" />
 
         <Forward name="400" path="400" />
         <Forward name="401" path="401" />
         <Forward name="500" path="500" />
       </SenderPipe>
+
+      <!-- Parse the response -->
+      <JsonValidatorPipe name="IngUrlRequestResponseValidator"
+        schema="schemas/ingUrlRequestResponse.json">
+        <Forward name="failure" path="ParseError" />
+      </JsonValidatorPipe>
+
+      <!-- Extract and store required data from the response -->
+      <JsonPipe name="JsonToXmlUrlRequest" direction="JSON2XML" />
+      <XsltPipe name="UrlExtractor" xpathExpression="/root/location"
+        storeResultInSessionKey="location">
+      </XsltPipe>
+
     </Pipeline>
   </Adapter>
 </Configuration>
