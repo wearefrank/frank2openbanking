@@ -2,7 +2,7 @@
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:noNamespaceSchemaLocation="../FrankConfig.xsd"
 >
-  <Adapter name="IngAuthorizationAdapter">
+  <Adapter name="IngAuthorization">
     <Receiver name="IngAuthorizationReceiver">
       <ApiListener name="IngAuthorizationRequestListener" uriPattern="ing" headerParams="Location" />
     </Receiver>
@@ -60,7 +60,7 @@
         storeResultInSessionKey="SignatureString"
         returnString="SignatureString"
         replaceFixedParams="true">
-        <Param name="SignatureString" 
+        <Param name="SignatureString"
           pattern="(request-target): post /oauth2/token&#xa;date: {FormattedDateTime}&#xa;digest: SHA-256={PayloadDigest}" />
       </FixedResultPipe>
       <!-- Sign the signature -->
@@ -106,7 +106,7 @@
       </JsonValidatorPipe>
 
       <!-- Extract and store required data from the response -->
-      <JsonPipe name="JsonToXml" direction="JSON2XML" />
+      <JsonPipe name="JsonToXml" />
       <XsltPipe name="TokenExtractor" xpathExpression="/root/access_token"
         storeResultInSessionKey="AccessToken" preserveInput="true" />
       <XsltPipe name="ClientIdExtractor" xpathExpression="/root/client_id"
@@ -194,10 +194,38 @@
       </JsonValidatorPipe>
 
       <!-- Extract and store required data from the response -->
-      <JsonPipe name="JsonToXmlUrlRequest" direction="JSON2XML" />
+      <JsonPipe name="JsonToXmlUrlRequest" />
       <XsltPipe name="UrlExtractor" xpathExpression="/root/location"
         storeResultInSessionKey="location">
       </XsltPipe>
+
+      <FixedResultPipe name="UrlFormatter" returnString="url" replaceFixedParams="true">
+        <Param name="url"
+          pattern="{location}?scope=payment-accounts%3Abalances%3Aview+payment-accounts%3Atransactions%3Aview&amp;redirect_uri=http://localhost/api/token&amp;client_id=5ca1ab1e-c0ca-c01a-cafe-154deadbea75&amp;state=anything&amp;response_type=code" />
+      </FixedResultPipe>
+
+    </Pipeline>
+  </Adapter>
+
+  <Adapter name="CustomerAccessToken">
+    <Receiver name="CustomerAccessTokenReceiver">
+      <ApiListener uriPattern="token" />
+    </Receiver>
+    <Pipeline>
+      <Exits>
+        <Exit name="Success" state="SUCCESS" />
+        <Exit name="400" state="ERROR" />
+        <Exit name="401" state="ERROR" />
+        <Exit name="500" state="ERROR" />
+        <Exit name="ParseError" state="ERROR" />
+      </Exits>
+
+      <FixedResultPipe 
+        name="PayloadFormatter" 
+        replaceFixedParams="true"
+        returnString="grand_type=authorization_code&amp;code=${LongerNameForVariableThatStoresCode}">
+        <Param name="LongerNameForVariableThatStoresCode" sessionKey="code" />
+      </FixedResultPipe>  
 
     </Pipeline>
   </Adapter>
