@@ -223,7 +223,7 @@
       <FixedResultPipe 
         name="PayloadFormatter" 
         replaceFixedParams="true"
-        returnString="grand_type=authorization_code&amp;code=${LongerNameForVariableThatStoresCode}">
+        returnString="grand_type=authorization_code&amp;code=LongerNameForVariableThatStoresCode">
         <Param name="LongerNameForVariableThatStoresCode" sessionKey="code" />
       </FixedResultPipe>  
 
