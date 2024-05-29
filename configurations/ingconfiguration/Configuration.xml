@@ -24,18 +24,18 @@
       <!--  -->
 
       <!-- read access token from /access_token.txt -->
-      <LocalFileSystemPipe 
-        name="UrlReadAccessTokenFromFile" 
-        action="read" 
-        filename="${configurations.directory}/IngConfiguration/access_token.txt" 
+      <LocalFileSystemPipe
+        name="UrlReadAccessTokenFromFile"
+        action="read"
+        filename="${configurations.directory}/IngConfiguration/access_token.txt"
         storeResultInSessionKey="AccessToken" />
 
       <!-- read ClientId from /client_id.txt -->
-      <LocalFileSystemPipe 
-        name="UrlReadClientIdFromFile" 
-        action="read" 
-        filename="${configurations.directory}/IngConfiguration/client_id.txt" 
-        storeResultInSessionKey="ClientId" 
+      <LocalFileSystemPipe
+        name="UrlReadClientIdFromFile"
+        action="read"
+        filename="${configurations.directory}/IngConfiguration/client_id.txt"
+        storeResultInSessionKey="ClientId"
       />
 
       <!-- fetch the GMT Time from an xslt funcion -->
@@ -118,7 +118,152 @@
         storeResultInSessionKey="location">
       </XsltPipe>
 
-      <FixedResultPipe name="UrlFormatter" returnString="url" replaceFixedParams="true" storeResultInSessionKey="location">
+      <FixedResultPipe name="UrlFormatter" returnString="url" replaceFixedParams="true"
+        storeResultInSessionKey="location">
+        <Param name="url"
+          pattern="{location}?scope=payment-accounts%3Abalances%3Aview+payment-accounts%3Atransactions%3Aview&amp;redirect_uri=https%3A%2F%2Fwww.example.com&amp;client_id=5ca1ab1e-c0ca-c01a-cafe-154deadbea75&amp;state=anything&amp;response_type=code" />
+      </FixedResultPipe>
+    </Pipeline>
+  </Adapter>
+
+  <Adapter name="IngPaymentUrlAdapter">
+    <Receiver name="IngPaymentRequestReceiver">
+      <ApiListener name="IngPaymentRequestListener" uriPattern="pay" />
+    </Receiver>
+
+    <Pipeline>
+      <Exits>
+        <Exit name="Success" state="SUCCESS" />
+        <Exit name="400" state="ERROR" />
+        <Exit name="401" state="ERROR" />
+        <Exit name="500" state="ERROR" />
+        <Exit name="ParseError" state="ERROR" />
+      </Exits>
+
+      <!-- Request url for the authorization server -->
+      <!--  -->
+      <!--  -->
+      <!--  -->
+      <!--  -->
+      <!--  -->
+
+      <!-- read access token from /access_token.txt -->
+      <LocalFileSystemPipe
+        name="UrlReadAccessTokenFromFile"
+        action="read"
+        filename="${configurations.directory}/IngConfiguration/access_token.txt"
+        storeResultInSessionKey="AccessToken" />
+
+      <!-- read ClientId from /client_id.txt -->
+      <LocalFileSystemPipe
+        name="UrlReadClientIdFromFile"
+        action="read"
+        filename="${configurations.directory}/IngConfiguration/client_id.txt"
+        storeResultInSessionKey="ClientId"
+      />
+
+      <!-- fetch the GMT Time from an xslt funcion -->
+      <XsltPipe name="GMT Date Getter UrlRequest" storeResultInSessionKey="FormattedDateTime"
+        styleSheetName="dateformatter.xsl"
+        getInputFromFixedValue="&lt;dummy /&gt;">
+      </XsltPipe>
+
+      <FixedResultPipe name="paymentPayload" storeResultInSessionKey="paymentPayload"
+        returnString='{"instructedAmount":{"amount":"1","currency":"EUR"},"creditorAccount":{"iban":"AT861921125678901234"},"creditorName":"Laura Musterfrau"}' />
+
+      <!-- Create hash the payload with sha256 -->
+      <ChecksumPipe
+        name="UrlRequest SHA256"
+        type="SHA256"
+        getInputFromSessionKey="paymentPayload"
+        storeResultInSessionKey="HashedPayload" />
+      <!-- convert the hexstring to base64 with a  -->
+      <SenderPipe name="EmptyHexStringToBase64" storeResultInSessionKey="PayloadDigest">
+        <JavascriptSender
+          jsFileName="JavaScript/HexStringToBase64.js"
+          jsFunctionName="hexToBase64">
+          <Param name="hexString" sessionKey="HashedPayload" />
+        </JavascriptSender>
+      </SenderPipe>
+
+      <FixedResultPipe name="authorizationHeader" storeResultInSessionKey="authorizationHeader"
+        returnString='keyId="{ClientId}",algorithm="rsa-sha256",headers="(request-target) date digest x-request-id",signature="{SignedSignature}"'>
+        <Param name="ClientId" sessionKey="ClientId" />
+        <Param name="SignedSignature" sessionKey="HashedPayload" />
+      </FixedResultPipe>
+
+      <!-- <FixedResultPipe name="datefixer" returnString="Tue, 28 May 2024 08:59:25 GMT" />
+      <FixedResultPipe name="signaturefixer"
+      returnString='keyId="5ca1ab1e-c0ca-c01a-cafe-154deadbea75",algorithm="rsa-sha256",headers="(request-target)
+      date digest
+      x-request-id",signature="R6RgziSs+jSj9GyXw0m+dL7I/hRKortSTaE+4vdIKsCwZgelfEe+t4HczU637bUTS3JasCUTpv9St+rGO8uoYVbxnaEi/Zk6HwzJAHZuRn3hPithaXAt5La9VBDLhbxANcgFmVZz38qjqeErmCoPNMek+10DhL0DvTz+gpaQciYSl2+11AhoGawDk6poQSIaH2NdQ+hFQ+3ubW+YraQXANJIuK1NPmddfgzUV2AoROUwkDuGbUKJPI/V1qwf74AIric8ncyvxmYKoga+/L8E9I/geOTETmNPSqdMRwLT7Eq5ZzuYQ4p74PAqHeIByuxs3whmXGJnEdMGdBtpMJWc+A=="'
+      /> -->
+
+      <!-- Create the signature string -->
+      <!-- Keep in mind that encoding occurs on the request url, so in order to keep -->
+      <!-- the signature the same as the request, the url has to be pre-encoded -->
+      <FixedResultPipe
+        name="CreateEmptySignatureString"
+        storeResultInSessionKey="SignatureString"
+        returnString="SignatureString"
+        replaceFixedParams="true">
+        <Param name="SignatureString"
+          pattern="(request-target): post /v1/payments/sepa-credit-transfers&#xa;date: {FormattedDateTime}&#xa;digest: SHA-256={PayloadDigest}&#xa;x-request-id: 5ca1ab1e-c0ca-c01a-cafe-154deadbea75" />
+      </FixedResultPipe>
+
+      <SignaturePipe
+        name="UrlRequestSignatureStringSigner"
+        keystore="/certs/signing.p12"
+        keystoreAlias="ing"
+        keystorePassword="Password123!"
+        storeResultInSessionKey="Signature"
+        getInputFromSessionKey="SignatureString"
+      />
+
+      <FixedResultPipe name="bodyformatter" replaceFixedParams="true"
+        returnString='{"instructedAmount":{"amount":"1","currency":"EUR"},"creditorAccount":{"iban":"AT861921125678901234"},"creditorName":"Laura Musterfrau"}'>
+        <Param name="bodyValue" sessionKey="paymentPayload" />
+      </FixedResultPipe>
+
+      <!-- request a payment url -->
+      <SenderPipe name="IngPaymentUrlRequest">
+        <HttpSender
+          url="https://api.sandbox.ing.com/v1/payments/sepa-credit-transfers"
+          methodType="POST"
+          headersParams="Accept, Content-Type, Digest, Date, User-Agent, TPP-Redirect-URI, PSU-IP-Address, X-Request-ID, Authorization, Signature" />
+
+        <Param name="TPP-Redirect-URI" value="https://example.com/redirect" />
+        <Param name="PSU-IP-Address" value="37.44.220.0" />
+        <Param name="X-Request-ID" value="5ca1ab1e-c0ca-c01a-cafe-154deadbea75" />
+        <Param name="Content-Type" value="application/json" />
+
+        <Param name="Date" sessionKey="FormattedDateTime" />
+        <Param name="User-Agent" value="frank2openbanking 0.0.1" />
+        <Param name="Digest" pattern="SHA-256={PayloadDigest}" />
+        <Param name="Signature"
+          pattern='keyId="{ClientId}",algorithm="rsa-sha256",headers="(request-target) date digest x-request-id",signature="{Signature}"' />
+        <Param name="Authorization" pattern="Bearer {AccessToken}" />
+        <Param name="Accept" value="application/json" />
+
+        <Forward name="400" path="400" />
+        <Forward name="401" path="401" />
+        <Forward name="500" path="500" />
+      </SenderPipe>
+
+      <!-- Parse the response -->
+      <JsonValidatorPipe name="IngUrlRequestResponseValidator"
+        schema="schemas/ingUrlRequestResponse.json">
+        <Forward name="failure" path="ParseError" />
+      </JsonValidatorPipe>
+
+      <!-- Extract and store required data from the response -->
+      <JsonPipe name="JsonToXmlUrlRequest" />
+      <XsltPipe name="UrlExtractor" xpathExpression="/root/location"
+        storeResultInSessionKey="location">
+      </XsltPipe>
+
+      <FixedResultPipe name="UrlFormatter" returnString="url" replaceFixedParams="true"
+        storeResultInSessionKey="location">
         <Param name="url"
           pattern="{location}?scope=payment-accounts%3Abalances%3Aview+payment-accounts%3Atransactions%3Aview&amp;redirect_uri=https%3A%2F%2Fwww.example.com&amp;client_id=5ca1ab1e-c0ca-c01a-cafe-154deadbea75&amp;state=anything&amp;response_type=code" />
       </FixedResultPipe>
@@ -138,16 +283,17 @@
         <Exit name="ParseError" state="ERROR" />
       </Exits>
 
-      <FixedResultPipe 
-        name="PayloadFormatter" 
+      <FixedResultPipe
+        name="PayloadFormatter"
         replaceFixedParams="true"
         returnString="grant_type=authorization_code&amp;code=LongerNameForVariableThatStoresCode"
         storeResultInSessionKey="payload">
         <Param name="LongerNameForVariableThatStoresCode" sessionKey="code" />
-      </FixedResultPipe>  
+      </FixedResultPipe>
 
       <!-- fetch the GMT Time from an xslt funcion -->
-      <XsltPipe name="CustomerAccessTokenRequestDate" storeResultInSessionKey="CustomerAccessTokenRequestDate"
+      <XsltPipe name="CustomerAccessTokenRequestDate"
+        storeResultInSessionKey="CustomerAccessTokenRequestDate"
         styleSheetName="dateformatter.xsl"
         getInputFromFixedValue="&lt;dummy /&gt;">
       </XsltPipe>
@@ -160,7 +306,8 @@
         storeResultInSessionKey="HashedPayload" />
 
       <!-- convert the hexstring to base64 with javascript -->
-      <SenderPipe name="CustomerAccessTokenRequestPayloadToBase64" storeResultInSessionKey="PayloadDigest">
+      <SenderPipe name="CustomerAccessTokenRequestPayloadToBase64"
+        storeResultInSessionKey="PayloadDigest">
         <JavascriptSender
           jsFileName="JavaScript/HexStringToBase64.js"
           jsFunctionName="hexToBase64">
@@ -185,21 +332,21 @@
         keystoreAlias="ing"
         keystorePassword="Password123!"
         storeResultInSessionKey="CustomerAccessTokenSignature"
-        getInputFromSessionKey="SignatureString"/>
+        getInputFromSessionKey="SignatureString" />
 
       <!-- read access token from /access_token.txt -->
-      <LocalFileSystemPipe 
-        name="ReadAccessTokenFromFile" 
-        action="read" 
-        filename="${configurations.directory}/IngConfiguration/access_token.txt" 
+      <LocalFileSystemPipe
+        name="ReadAccessTokenFromFile"
+        action="read"
+        filename="${configurations.directory}/IngConfiguration/access_token.txt"
         storeResultInSessionKey="AccessToken" />
 
       <!-- read ClientId from /client_id.txt -->
-      <LocalFileSystemPipe 
-        name="ReadClientIdFromFile" 
-        action="read" 
-        filename="${configurations.directory}/IngConfiguration/client_id.txt" 
-        storeResultInSessionKey="ClientId" 
+      <LocalFileSystemPipe
+        name="ReadClientIdFromFile"
+        action="read"
+        filename="${configurations.directory}/IngConfiguration/client_id.txt"
+        storeResultInSessionKey="ClientId"
       />
 
       <!-- broken in 8.1.0, to fix move to 8.2.0 -->
@@ -220,7 +367,8 @@
         <Param name="Authorization" pattern="Bearer {AccessToken}" />
         <Param name="Accept" value="application/json" />
         <Param name="Content-Type" value="application/x-www-form-urlencoded" />
-        <Param name="Signature" pattern='keyId="{ClientId}",algorithm="rsa-sha256",headers="(request-target) date digest",signature="{CustomerAccessTokenSignature}"' />
+        <Param name="Signature"
+          pattern='keyId="{ClientId}",algorithm="rsa-sha256",headers="(request-target) date digest",signature="{CustomerAccessTokenSignature}"' />
         <Param name="grant_type" value="authorization_code" />
         <Param name="code" sessionKey="code" />
       </SenderPipe>
@@ -240,7 +388,8 @@
         storeResultInSessionKey="CustomerRefreshToken" preserveInput="true" />
 
       <!-- Get the request date -->
-      <XsltPipe name="CustomerInformationRequestDate" storeResultInSessionKey="CustomerInformationRequestDate"
+      <XsltPipe name="CustomerInformationRequestDate"
+        storeResultInSessionKey="CustomerInformationRequestDate"
         styleSheetName="dateformatter.xsl"
         getInputFromFixedValue="&lt;dummy /&gt;" />
 
@@ -263,8 +412,8 @@
         getInputFromSessionKey="SignatureString" />
 
       <SenderPipe name="CustomerInformationRequestSender">
-        <HttpSender 
-          url="https://api.sandbox.ing.com/v3/accounts" 
+        <HttpSender
+          url="https://api.sandbox.ing.com/v3/accounts"
           methodType="GET"
           headersParams="Accept, Content-Type, Digest, Date, user-agent, Authorization, X-Request-ID, Signature"
           treatInputMessageAsParameters="false"
@@ -278,10 +427,14 @@
         <Param name="Accept" value="application/json" />
         <Param name="Content-Type" value="application/json" />
         <Param name="X-Request-ID" value="33a298e6-44c7-481f-94ae-fdc0321fcff3" />
-        <Param name="Signature" pattern='keyId="{ClientId}",algorithm="rsa-sha256",headers="(request-target) date digest",signature="{CustomerAccessTokenSignature}"' />
+        <Param name="Signature"
+          pattern='keyId="{ClientId}",algorithm="rsa-sha256",headers="(request-target) date digest",signature="{CustomerAccessTokenSignature}"' />
       </SenderPipe>
     </Pipeline>
+
+
   </Adapter>
+
   <Adapter name="AccessTokenAdapter">
     <Receiver name="AccessTokenReceiver">
       <JavaListener name="AccessTokenListener" />
@@ -396,14 +549,16 @@
         <Param name="filename" value="${configurations.directory}/IngConfiguration/client_id.txt" />
       </LocalFileSystemPipe>
 
-      <LocalFileSystemPipe name="WriteAccessTokenToFile" action="write" overwrite="true" getInputFromSessionKey="AccessToken">
+      <LocalFileSystemPipe name="WriteAccessTokenToFile" action="write" overwrite="true"
+        getInputFromSessionKey="AccessToken">
         <Param name="filename" value="${configurations.directory}/IngConfiguration/access_token.txt" />
       </LocalFileSystemPipe>
     </Pipeline>
   </Adapter>
   <Scheduler>
     <!-- Refresh the token every 10 minutes (token is valid for 15 minutes) -->
-    <Job name="Refresh Access Token" javaListener="AccessTokenListener" function="sendMessage" interval="600000"/>
+    <Job name="Refresh Access Token" javaListener="AccessTokenListener" function="sendMessage"
+      interval="600000" />
   </Scheduler>
-  
+
 </Configuration>
