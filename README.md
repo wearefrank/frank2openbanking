@@ -17,7 +17,7 @@ IMPORTANT: The proof of concept is built with a restriction in the sandbox envir
 ```
 
 ```
-NOTE: The application can also be run using the FrankFramework using docker. The docker-compose file is included in the repository. Follow the mounting instructions in the FrankFramework repository.
+NOTE: The application can also be run using the FrankFramework using docker. The docker-compose file is included in the frankframework repository. Follow the mounting instructions in the FrankFramework repository.
 ```
 
 ## Usage
