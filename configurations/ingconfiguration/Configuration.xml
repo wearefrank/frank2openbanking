@@ -276,11 +276,9 @@
     </Receiver>
     <Pipeline>
       <Exits>
-        <Exit name="Success" state="SUCCESS" />
-        <Exit name="400" state="ERROR" />
-        <Exit name="401" state="ERROR" />
-        <Exit name="500" state="ERROR" />
-        <Exit name="ParseError" state="ERROR" />
+        <Exit name="Success" state="SUCCESS" code="200" />
+        <Exit name="Error" state="ERROR" code="401" />
+        <Exit name="ParseError" state="ERROR" code="401" />
       </Exits>
 
       <FixedResultPipe
@@ -376,7 +374,7 @@
       <!-- Parse the response -->
       <JsonValidatorPipe name="CustomerAccessTokenResponseValidator"
         schema="schemas/ingCustomerAccessTokenResponse.json">
-        <Forward name="failure" path="ParseError" />
+        <Forward name="failure" path="errorFormatter" />
       </JsonValidatorPipe>
 
       <!-- Extract and store required data from the response -->
@@ -429,10 +427,17 @@
         <Param name="X-Request-ID" value="33a298e6-44c7-481f-94ae-fdc0321fcff3" />
         <Param name="Signature"
           pattern='keyId="{ClientId}",algorithm="rsa-sha256",headers="(request-target) date digest",signature="{CustomerAccessTokenSignature}"' />
+        <Forward name="200" path="Success" />
+        <Forward name="400" path="errorFormatter" />
+        <Forward name="401" path="errorFormatter" />
+        <Forward name="500" path="errorFormatter" />
       </SenderPipe>
+      
+      <FixedResultPipe name="errorFormatter" returnString="Invalid Code">
+        <Forward name="success" path="Error" />
+      </FixedResultPipe>
+
     </Pipeline>
-
-
   </Adapter>
 
   <Adapter name="AccessTokenAdapter">
@@ -443,9 +448,10 @@
     <Pipeline>
       <Exits>
         <Exit name="Success" state="SUCCESS" />
-        <Exit name="400" state="ERROR" />
-        <Exit name="401" state="ERROR" />
-        <Exit name="500" state="ERROR" />
+        <Exit name="400" state="ERROR"/>
+        <Exit name="401" state="ERROR"/>
+        <Exit name="500" state="ERROR"/>
+        <Exit name="ERROR" state="ERROR" />
         <Exit name="ParseError" state="ERROR" />
       </Exits>
 
