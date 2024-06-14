@@ -76,7 +76,9 @@ The application can be converted to a production environment by following the st
 ```
 NOTE: keep a secrets file for certificates and passwords. The secrets file should not be included in the repository.
 ```
-
+```
+NOTE: When converting the application to production, make sure to mask the sensitive data in the logs.
+```
 ```
 NOTE: When working with live data, the application has to take proper security measures to protect the data. The application has to be GDPR compliant.
 ```
