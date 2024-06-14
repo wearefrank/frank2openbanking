@@ -58,6 +58,8 @@ If a custom implementation is built with this proof of concept as base, these ar
     ├──── etc..
     
 ```
+* the style of the application should be consistent with the proof of concept, use the same naming conventions and structure, and avoid using abbreviations for variable names.
+
 
 
 
@@ -70,6 +72,10 @@ The application can be converted to a production environment by following the st
 5. The redirect URL has to be changed to the production URL.
 6. The application has to be hosted on a secure server with the proper certificates installed.
 7. The application has to be registered with the bank's developer portal.
+
+```
+NOTE: keep a secrets file for certificates and passwords. The secrets file should not be included in the repository.
+```
 
 ```
 NOTE: When working with live data, the application has to take proper security measures to protect the data. The application has to be GDPR compliant.
