@@ -245,21 +245,9 @@
 
       <!-- Parse the response -->
       <JsonValidatorPipe name="IngUrlRequestResponseValidator"
-        schema="schemas/ingUrlRequestResponse.json">
+        schema="schemas/ingPaymentUrlResponse.json">
         <Forward name="failure" path="ParseError" />
       </JsonValidatorPipe>
-
-      <!-- Extract and store required data from the response -->
-      <JsonPipe name="JsonToXmlUrlRequest" />
-      <XsltPipe name="UrlExtractor" xpathExpression="/root/location"
-        storeResultInSessionKey="location">
-      </XsltPipe>
-
-      <FixedResultPipe name="UrlFormatter" returnString="url" replaceFixedParams="true"
-        storeResultInSessionKey="location">
-        <Param name="url"
-          pattern="{location}?scope=payment-accounts%3Abalances%3Aview+payment-accounts%3Atransactions%3Aview&amp;redirect_uri=https%3A%2F%2Fwww.example.com&amp;client_id=5ca1ab1e-c0ca-c01a-cafe-154deadbea75&amp;state=anything&amp;response_type=code" />
-      </FixedResultPipe>
     </Pipeline>
   </Adapter>
 
