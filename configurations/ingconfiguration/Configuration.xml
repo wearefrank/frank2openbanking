@@ -39,7 +39,7 @@
       />
 
       <!-- fetch the GMT Time from an xslt funcion -->
-      <XsltPipe name="GMT Date Getter UrlRequest" storeResultInSessionKey="FormattedDateTime"
+      <XsltPipe name="urlRequestDateGetter" storeResultInSessionKey="formattedDateTime"
         styleSheetName="dateformatter.xsl"
         getInputFromFixedValue="&lt;dummy /&gt;">
       </XsltPipe>
@@ -68,7 +68,7 @@
         returnString="SignatureString"
         replaceFixedParams="true">
         <Param name="SignatureString"
-          pattern="(request-target): get /oauth2/authorization-server-url?scope=payment-accounts%3Abalances%3Aview&amp;redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fiaf-test%2Fapi%2Ftoken&amp;country_code=NL&#xa;date: {FormattedDateTime}&#xa;digest: SHA-256=47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=" />
+          pattern="(request-target): get /oauth2/authorization-server-url?scope=payment-accounts%3Abalances%3Aview&amp;redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fiaf-test%2Fapi%2Ftoken&amp;country_code=NL&#xa;date: {formattedDateTime}&#xa;digest: SHA-256=47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=" />
       </FixedResultPipe>
 
       <SignaturePipe
@@ -93,7 +93,7 @@
         <Param name="redirect_uri" value="http://localhost:8080/iaf-test/api/token" />
         <Param name="country_code" value="NL" />
 
-        <Param name="Date" sessionKey="FormattedDateTime" />
+        <Param name="Date" sessionKey="formattedDateTime" />
         <Param name="user-agent" value="frank2openbanking 0.0.1" />
         <Param name="Digest" pattern="SHA-256=47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=" />
         <Param name="Signature"
@@ -163,7 +163,7 @@
       />
 
       <!-- fetch the GMT Time from an xslt funcion -->
-      <XsltPipe name="GMT Date Getter UrlRequest" storeResultInSessionKey="FormattedDateTime"
+      <XsltPipe name="GMT Date Getter UrlRequest" storeResultInSessionKey="formattedDateTime"
         styleSheetName="dateformatter.xsl"
         getInputFromFixedValue="&lt;dummy /&gt;">
       </XsltPipe>
@@ -192,13 +192,6 @@
         <Param name="SignedSignature" sessionKey="HashedPayload" />
       </FixedResultPipe>
 
-      <!-- <FixedResultPipe name="datefixer" returnString="Tue, 28 May 2024 08:59:25 GMT" />
-      <FixedResultPipe name="signaturefixer"
-      returnString='keyId="5ca1ab1e-c0ca-c01a-cafe-154deadbea75",algorithm="rsa-sha256",headers="(request-target)
-      date digest
-      x-request-id",signature="R6RgziSs+jSj9GyXw0m+dL7I/hRKortSTaE+4vdIKsCwZgelfEe+t4HczU637bUTS3JasCUTpv9St+rGO8uoYVbxnaEi/Zk6HwzJAHZuRn3hPithaXAt5La9VBDLhbxANcgFmVZz38qjqeErmCoPNMek+10DhL0DvTz+gpaQciYSl2+11AhoGawDk6poQSIaH2NdQ+hFQ+3ubW+YraQXANJIuK1NPmddfgzUV2AoROUwkDuGbUKJPI/V1qwf74AIric8ncyvxmYKoga+/L8E9I/geOTETmNPSqdMRwLT7Eq5ZzuYQ4p74PAqHeIByuxs3whmXGJnEdMGdBtpMJWc+A=="'
-      /> -->
-
       <!-- Create the signature string -->
       <!-- Keep in mind that encoding occurs on the request url, so in order to keep -->
       <!-- the signature the same as the request, the url has to be pre-encoded -->
@@ -208,7 +201,7 @@
         returnString="SignatureString"
         replaceFixedParams="true">
         <Param name="SignatureString"
-          pattern="(request-target): post /v1/payments/sepa-credit-transfers&#xa;date: {FormattedDateTime}&#xa;digest: SHA-256={PayloadDigest}&#xa;x-request-id: 5ca1ab1e-c0ca-c01a-cafe-154deadbea75" />
+          pattern="(request-target): post /v1/payments/sepa-credit-transfers&#xa;date: {formattedDateTime}&#xa;digest: SHA-256={PayloadDigest}&#xa;x-request-id: 5ca1ab1e-c0ca-c01a-cafe-154deadbea75" />
       </FixedResultPipe>
 
       <SignaturePipe
@@ -237,7 +230,7 @@
         <Param name="X-Request-ID" value="5ca1ab1e-c0ca-c01a-cafe-154deadbea75" />
         <Param name="Content-Type" value="application/json" />
 
-        <Param name="Date" sessionKey="FormattedDateTime" />
+        <Param name="Date" sessionKey="formattedDateTime" />
         <Param name="User-Agent" value="frank2openbanking 0.0.1" />
         <Param name="Digest" pattern="SHA-256={PayloadDigest}" />
         <Param name="Signature"
@@ -277,6 +270,7 @@
     <Pipeline>
       <Exits>
         <Exit name="Success" state="SUCCESS" code="200" />
+        <Exit name="Success" state="SUCCESS" code="201" />
         <Exit name="Error" state="ERROR" code="401" />
         <Exit name="ParseError" state="ERROR" code="401" />
       </Exits>
@@ -463,7 +457,7 @@
       <!--  -->
 
       <!-- fetch the GMT Time from an xslt funcion -->
-      <XsltPipe name="GMT Date Getter" storeResultInSessionKey="FormattedDateTime"
+      <XsltPipe name="GMT Date Getter" storeResultInSessionKey="formattedDateTime"
         styleSheetName="dateformatter.xsl"
         getInputFromFixedValue="&lt;dummy /&gt;">
       </XsltPipe>
@@ -500,7 +494,7 @@
         returnString="SignatureString"
         replaceFixedParams="true">
         <Param name="SignatureString"
-          pattern="(request-target): post /oauth2/token&#xa;date: {FormattedDateTime}&#xa;digest: SHA-256={PayloadDigest}" />
+          pattern="(request-target): post /oauth2/token&#xa;date: {formattedDateTime}&#xa;digest: SHA-256={PayloadDigest}" />
       </FixedResultPipe>
       <!-- Sign the signature -->
       <SignaturePipe
@@ -524,7 +518,7 @@
           keystore="/certs/tls.p12"
           keystoreAlias="ing"
           keystorePassword="Password123!" />
-        <Param name="Date" sessionKey="FormattedDateTime" />
+        <Param name="Date" sessionKey="formattedDateTime" />
         <Param name="Digest" pattern="SHA-256={PayloadDigest}" />
         <Param name="TPP-Signature-Certificate" sessionKey="SigningCertificate" />
         <Param name="authorization"
