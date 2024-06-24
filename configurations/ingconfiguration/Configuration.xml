@@ -2,9 +2,9 @@
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:noNamespaceSchemaLocation="../FrankConfig.xsd"
 >
-  <Adapter name="IngAuthorization">
-    <Receiver name="IngAuthorizationReceiver">
-      <ApiListener name="IngAuthorizationRequestListener" uriPattern="ing" headerParams="Location" />
+  <Adapter name="ingAuthorization">
+    <Receiver name="ingAuthorizationReceiver">
+      <ApiListener name="ingAuthorizationRequestListener" uriPattern="ing/ais" headerParams="Location" />
     </Receiver>
 
     <Pipeline>
@@ -23,35 +23,35 @@
       <!--  -->
       <!--  -->
 
-      <!-- read access token from /access_token.txt -->
+      <!-- read the application access token from /access_token.txt -->
       <LocalFileSystemPipe
-        name="UrlReadAccessTokenFromFile"
+        name="urlReadAccessTokenFromFile"
         action="read"
         filename="${configurations.directory}/IngConfiguration/access_token.txt"
-        storeResultInSessionKey="AccessToken" />
+        storeResultInSessionKey="applicationAccessToken" />
 
-      <!-- read ClientId from /client_id.txt -->
+      <!-- read application clientId from /client_id.txt -->
       <LocalFileSystemPipe
-        name="UrlReadClientIdFromFile"
+        name="urlRequestReadClientIdFromFile"
         action="read"
         filename="${configurations.directory}/IngConfiguration/client_id.txt"
-        storeResultInSessionKey="ClientId"
+        storeResultInSessionKey="clientId"
       />
 
       <!-- fetch the GMT Time from an xslt funcion -->
-      <XsltPipe name="GMT Date Getter UrlRequest" storeResultInSessionKey="FormattedDateTime"
+      <XsltPipe name="urlRequestDateGetter" storeResultInSessionKey="formattedDateTime"
         styleSheetName="dateformatter.xsl"
         getInputFromFixedValue="&lt;dummy /&gt;">
       </XsltPipe>
 
       <!-- Create hash the payload with sha256 -->
       <ChecksumPipe
-        name="UrlRequest SHA256"
+        name="urlRequestPayloadHasherSHA256"
         type="SHA256"
         getInputFromFixedValue=""
         storeResultInSessionKey="HashedEmptyPayload" />
       <!-- convert the hexstring to base64 with a  -->
-      <SenderPipe name="EmptyHexStringToBase64" storeResultInSessionKey="EmptyPayloadDigest">
+      <SenderPipe name="emptyHexStringToBase64" storeResultInSessionKey="EmptyPayloadDigest">
         <JavascriptSender
           jsFileName="JavaScript/HexStringToBase64.js"
           jsFunctionName="hexToBase64">
@@ -63,16 +63,16 @@
       <!-- Keep in mind that encoding occurs on the request url, so in order to keep -->
       <!-- the signature the same as the request, the url has to be pre-encoded -->
       <FixedResultPipe
-        name="CreateEmptySignatureString"
+        name="createUrlRequestSignatureString"
         storeResultInSessionKey="SignatureString"
         returnString="SignatureString"
         replaceFixedParams="true">
         <Param name="SignatureString"
-          pattern="(request-target): get /oauth2/authorization-server-url?scope=payment-accounts%3Abalances%3Aview&amp;redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fiaf-test%2Fapi%2Ftoken&amp;country_code=NL&#xa;date: {FormattedDateTime}&#xa;digest: SHA-256=47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=" />
+          pattern="(request-target): get /oauth2/authorization-server-url?scope=payment-accounts%3Abalances%3Aview&amp;redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fiaf-test%2Fapi%2Ftoken&amp;country_code=NL&#xa;date: {formattedDateTime}&#xa;digest: SHA-256=47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=" />
       </FixedResultPipe>
 
       <SignaturePipe
-        name="UrlRequestSignatureStringSigner"
+        name="urlRequestSignatureStringSigner"
         keystore="/certs/signing.p12"
         keystoreAlias="ing"
         keystorePassword="Password123!"
@@ -82,7 +82,7 @@
 
       <!-- request a url -->
       <!-- url="https://api.sandbox.ing.com/oauth2/authorization-server-url" -->
-      <SenderPipe name="IngUrlRequest">
+      <SenderPipe name="ingUrlRequest">
         <HttpSender
           url="https://api.sandbox.ing.com/oauth2/authorization-server-url"
           methodType="GET"
@@ -93,12 +93,12 @@
         <Param name="redirect_uri" value="http://localhost:8080/iaf-test/api/token" />
         <Param name="country_code" value="NL" />
 
-        <Param name="Date" sessionKey="FormattedDateTime" />
+        <Param name="Date" sessionKey="formattedDateTime" />
         <Param name="user-agent" value="frank2openbanking 0.0.1" />
         <Param name="Digest" pattern="SHA-256=47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=" />
         <Param name="Signature"
-          pattern='keyId="{ClientId}",algorithm="rsa-sha256",headers="(request-target) date digest",signature="{Signature}"' />
-        <Param name="Authorization" pattern="Bearer {AccessToken}" />
+          pattern='keyId="{clientId}",algorithm="rsa-sha256",headers="(request-target) date digest",signature="{Signature}"' />
+        <Param name="Authorization" pattern="Bearer {applicationAccessToken}" />
         <Param name="Accept" value="application/json" />
 
         <Forward name="400" path="400" />
@@ -107,18 +107,18 @@
       </SenderPipe>
 
       <!-- Parse the response -->
-      <JsonValidatorPipe name="IngUrlRequestResponseValidator"
+      <JsonValidatorPipe name="ingUrlRequestResponseValidator"
         schema="schemas/ingUrlRequestResponse.json">
         <Forward name="failure" path="ParseError" />
       </JsonValidatorPipe>
 
       <!-- Extract and store required data from the response -->
-      <JsonPipe name="JsonToXmlUrlRequest" />
-      <XsltPipe name="UrlExtractor" xpathExpression="/root/location"
+      <JsonPipe name="jsonToXmlUrlRequest" />
+      <XsltPipe name="urlExtractor" xpathExpression="/root/location"
         storeResultInSessionKey="location">
       </XsltPipe>
 
-      <FixedResultPipe name="UrlFormatter" returnString="url" replaceFixedParams="true"
+      <FixedResultPipe name="urlFormatter" returnString="url" replaceFixedParams="true"
         storeResultInSessionKey="location">
         <Param name="url"
           pattern="{location}?scope=payment-accounts%3Abalances%3Aview+payment-accounts%3Atransactions%3Aview&amp;redirect_uri=https%3A%2F%2Fwww.example.com&amp;client_id=5ca1ab1e-c0ca-c01a-cafe-154deadbea75&amp;state=anything&amp;response_type=code" />
@@ -126,9 +126,9 @@
     </Pipeline>
   </Adapter>
 
-  <Adapter name="IngPaymentUrlAdapter">
-    <Receiver name="IngPaymentRequestReceiver">
-      <ApiListener name="IngPaymentRequestListener" uriPattern="pay" />
+  <Adapter name="ingPaymentUrlAdapter">
+    <Receiver name="ingPaymentRequestReceiver">
+      <ApiListener name="ingPaymentRequestListener" uriPattern="ing/pis" />
     </Receiver>
 
     <Pipeline>
@@ -149,21 +149,21 @@
 
       <!-- read access token from /access_token.txt -->
       <LocalFileSystemPipe
-        name="UrlReadAccessTokenFromFile"
+        name="urlReadAccessTokenFromFile"
         action="read"
         filename="${configurations.directory}/IngConfiguration/access_token.txt"
         storeResultInSessionKey="AccessToken" />
 
       <!-- read ClientId from /client_id.txt -->
       <LocalFileSystemPipe
-        name="UrlReadClientIdFromFile"
+        name="urlReadClientIdFromFile"
         action="read"
         filename="${configurations.directory}/IngConfiguration/client_id.txt"
-        storeResultInSessionKey="ClientId"
+        storeResultInSessionKey="clientId"
       />
 
       <!-- fetch the GMT Time from an xslt funcion -->
-      <XsltPipe name="GMT Date Getter UrlRequest" storeResultInSessionKey="FormattedDateTime"
+      <XsltPipe name="urlRequestDateGetter" storeResultInSessionKey="formattedDateTime"
         styleSheetName="dateformatter.xsl"
         getInputFromFixedValue="&lt;dummy /&gt;">
       </XsltPipe>
@@ -173,12 +173,12 @@
 
       <!-- Create hash the payload with sha256 -->
       <ChecksumPipe
-        name="UrlRequest SHA256"
+        name="paymentUrlRequestPayloadHasherSHA256"
         type="SHA256"
         getInputFromSessionKey="paymentPayload"
         storeResultInSessionKey="HashedPayload" />
       <!-- convert the hexstring to base64 with a  -->
-      <SenderPipe name="EmptyHexStringToBase64" storeResultInSessionKey="PayloadDigest">
+      <SenderPipe name="payloadHashToBase64" storeResultInSessionKey="PayloadDigest">
         <JavascriptSender
           jsFileName="JavaScript/HexStringToBase64.js"
           jsFunctionName="hexToBase64">
@@ -187,32 +187,25 @@
       </SenderPipe>
 
       <FixedResultPipe name="authorizationHeader" storeResultInSessionKey="authorizationHeader"
-        returnString='keyId="{ClientId}",algorithm="rsa-sha256",headers="(request-target) date digest x-request-id",signature="{SignedSignature}"'>
-        <Param name="ClientId" sessionKey="ClientId" />
+        returnString='keyId="{clientId}",algorithm="rsa-sha256",headers="(request-target) date digest x-request-id",signature="{SignedSignature}"'>
+        <Param name="clientId" sessionKey="clientId" />
         <Param name="SignedSignature" sessionKey="HashedPayload" />
       </FixedResultPipe>
-
-      <!-- <FixedResultPipe name="datefixer" returnString="Tue, 28 May 2024 08:59:25 GMT" />
-      <FixedResultPipe name="signaturefixer"
-      returnString='keyId="5ca1ab1e-c0ca-c01a-cafe-154deadbea75",algorithm="rsa-sha256",headers="(request-target)
-      date digest
-      x-request-id",signature="R6RgziSs+jSj9GyXw0m+dL7I/hRKortSTaE+4vdIKsCwZgelfEe+t4HczU637bUTS3JasCUTpv9St+rGO8uoYVbxnaEi/Zk6HwzJAHZuRn3hPithaXAt5La9VBDLhbxANcgFmVZz38qjqeErmCoPNMek+10DhL0DvTz+gpaQciYSl2+11AhoGawDk6poQSIaH2NdQ+hFQ+3ubW+YraQXANJIuK1NPmddfgzUV2AoROUwkDuGbUKJPI/V1qwf74AIric8ncyvxmYKoga+/L8E9I/geOTETmNPSqdMRwLT7Eq5ZzuYQ4p74PAqHeIByuxs3whmXGJnEdMGdBtpMJWc+A=="'
-      /> -->
 
       <!-- Create the signature string -->
       <!-- Keep in mind that encoding occurs on the request url, so in order to keep -->
       <!-- the signature the same as the request, the url has to be pre-encoded -->
       <FixedResultPipe
-        name="CreateEmptySignatureString"
+        name="signatureStringFormatter"
         storeResultInSessionKey="SignatureString"
         returnString="SignatureString"
         replaceFixedParams="true">
         <Param name="SignatureString"
-          pattern="(request-target): post /v1/payments/sepa-credit-transfers&#xa;date: {FormattedDateTime}&#xa;digest: SHA-256={PayloadDigest}&#xa;x-request-id: 5ca1ab1e-c0ca-c01a-cafe-154deadbea75" />
+          pattern="(request-target): post /v1/payments/sepa-credit-transfers&#xa;date: {formattedDateTime}&#xa;digest: SHA-256={PayloadDigest}&#xa;x-request-id: 5ca1ab1e-c0ca-c01a-cafe-154deadbea75" />
       </FixedResultPipe>
 
       <SignaturePipe
-        name="UrlRequestSignatureStringSigner"
+        name="urlRequestSignatureStringSigner"
         keystore="/certs/signing.p12"
         keystoreAlias="ing"
         keystorePassword="Password123!"
@@ -220,13 +213,13 @@
         getInputFromSessionKey="SignatureString"
       />
 
-      <FixedResultPipe name="bodyformatter" replaceFixedParams="true"
+      <FixedResultPipe name="requestBodyFormatter" replaceFixedParams="true"
         returnString='{"instructedAmount":{"amount":"1","currency":"EUR"},"creditorAccount":{"iban":"AT861921125678901234"},"creditorName":"Laura Musterfrau"}'>
         <Param name="bodyValue" sessionKey="paymentPayload" />
       </FixedResultPipe>
 
       <!-- request a payment url -->
-      <SenderPipe name="IngPaymentUrlRequest">
+      <SenderPipe name="ingPaymentUrlRequest">
         <HttpSender
           url="https://api.sandbox.ing.com/v1/payments/sepa-credit-transfers"
           methodType="POST"
@@ -237,11 +230,11 @@
         <Param name="X-Request-ID" value="5ca1ab1e-c0ca-c01a-cafe-154deadbea75" />
         <Param name="Content-Type" value="application/json" />
 
-        <Param name="Date" sessionKey="FormattedDateTime" />
+        <Param name="Date" sessionKey="formattedDateTime" />
         <Param name="User-Agent" value="frank2openbanking 0.0.1" />
         <Param name="Digest" pattern="SHA-256={PayloadDigest}" />
         <Param name="Signature"
-          pattern='keyId="{ClientId}",algorithm="rsa-sha256",headers="(request-target) date digest x-request-id",signature="{Signature}"' />
+          pattern='keyId="{clientId}",algorithm="rsa-sha256",headers="(request-target) date digest x-request-id",signature="{Signature}"' />
         <Param name="Authorization" pattern="Bearer {AccessToken}" />
         <Param name="Accept" value="application/json" />
 
@@ -251,38 +244,27 @@
       </SenderPipe>
 
       <!-- Parse the response -->
-      <JsonValidatorPipe name="IngUrlRequestResponseValidator"
-        schema="schemas/ingUrlRequestResponse.json">
+      <JsonValidatorPipe name="ingPaymentUrlResponseValidator"
+        schema="schemas/ingPaymentUrlResponse.json">
         <Forward name="failure" path="ParseError" />
       </JsonValidatorPipe>
-
-      <!-- Extract and store required data from the response -->
-      <JsonPipe name="JsonToXmlUrlRequest" />
-      <XsltPipe name="UrlExtractor" xpathExpression="/root/location"
-        storeResultInSessionKey="location">
-      </XsltPipe>
-
-      <FixedResultPipe name="UrlFormatter" returnString="url" replaceFixedParams="true"
-        storeResultInSessionKey="location">
-        <Param name="url"
-          pattern="{location}?scope=payment-accounts%3Abalances%3Aview+payment-accounts%3Atransactions%3Aview&amp;redirect_uri=https%3A%2F%2Fwww.example.com&amp;client_id=5ca1ab1e-c0ca-c01a-cafe-154deadbea75&amp;state=anything&amp;response_type=code" />
-      </FixedResultPipe>
     </Pipeline>
   </Adapter>
 
-  <Adapter name="CustomerAccessToken">
-    <Receiver name="CustomerAccessTokenReceiver">
-      <ApiListener uriPattern="token" />
+  <Adapter name="customerAccessToken">
+    <Receiver name="customerAccessTokenReceiver">
+      <ApiListener uriPattern="ing/token" />
     </Receiver>
     <Pipeline>
       <Exits>
         <Exit name="Success" state="SUCCESS" code="200" />
+        <Exit name="Success" state="SUCCESS" code="201" />
         <Exit name="Error" state="ERROR" code="401" />
         <Exit name="ParseError" state="ERROR" code="401" />
       </Exits>
 
       <FixedResultPipe
-        name="PayloadFormatter"
+        name="payloadFormatter"
         replaceFixedParams="true"
         returnString="grant_type=authorization_code&amp;code=LongerNameForVariableThatStoresCode"
         storeResultInSessionKey="payload">
@@ -290,7 +272,7 @@
       </FixedResultPipe>
 
       <!-- fetch the GMT Time from an xslt funcion -->
-      <XsltPipe name="CustomerAccessTokenRequestDate"
+      <XsltPipe name="customerAccessTokenRequestDate"
         storeResultInSessionKey="CustomerAccessTokenRequestDate"
         styleSheetName="dateformatter.xsl"
         getInputFromFixedValue="&lt;dummy /&gt;">
@@ -298,13 +280,13 @@
 
       <!-- Create hash the payload with sha256 -->
       <ChecksumPipe
-        name="CustomerAccessTokenPayloadHasherSHA256"
+        name="customerAccessTokenPayloadHasherSHA256"
         type="SHA256"
         getInputFromSessionKey="payload"
         storeResultInSessionKey="HashedPayload" />
 
       <!-- convert the hexstring to base64 with javascript -->
-      <SenderPipe name="CustomerAccessTokenRequestPayloadToBase64"
+      <SenderPipe name="customerAccessTokenRequestPayloadToBase64"
         storeResultInSessionKey="PayloadDigest">
         <JavascriptSender
           jsFileName="JavaScript/HexStringToBase64.js"
@@ -315,7 +297,7 @@
 
       <!-- Create the signature string -->
       <FixedResultPipe
-        name="CreateSignatureString"
+        name="createCustomerAccessTokenSignatureString"
         storeResultInSessionKey="SignatureString"
         returnString="SignatureString"
         replaceFixedParams="true">
@@ -325,7 +307,7 @@
 
       <!-- Sign the signature -->
       <SignaturePipe
-        name="CustomerAccessTokenSignatureStringSigner"
+        name="customerAccessTokenSignatureStringSigner"
         keystore="/certs/signing.p12"
         keystoreAlias="ing"
         keystorePassword="Password123!"
@@ -334,21 +316,20 @@
 
       <!-- read access token from /access_token.txt -->
       <LocalFileSystemPipe
-        name="ReadAccessTokenFromFile"
+        name="readApplicationAccessTokenFromFile"
         action="read"
         filename="${configurations.directory}/IngConfiguration/access_token.txt"
         storeResultInSessionKey="AccessToken" />
 
       <!-- read ClientId from /client_id.txt -->
       <LocalFileSystemPipe
-        name="ReadClientIdFromFile"
+        name="readClientIdFromFile"
         action="read"
         filename="${configurations.directory}/IngConfiguration/client_id.txt"
-        storeResultInSessionKey="ClientId"
+        storeResultInSessionKey="clientId"
       />
 
-      <!-- broken in 8.1.0, to fix move to 8.2.0 -->
-      <SenderPipe name="CustomerAccessTokenRequestSender">
+      <SenderPipe name="customerAccessTokenRequestSender">
         <HttpSender
           url="https://api.sandbox.ing.com/oauth2/token"
           methodType="POST"
@@ -366,50 +347,50 @@
         <Param name="Accept" value="application/json" />
         <Param name="Content-Type" value="application/x-www-form-urlencoded" />
         <Param name="Signature"
-          pattern='keyId="{ClientId}",algorithm="rsa-sha256",headers="(request-target) date digest",signature="{CustomerAccessTokenSignature}"' />
+          pattern='keyId="{clientId}",algorithm="rsa-sha256",headers="(request-target) date digest",signature="{CustomerAccessTokenSignature}"' />
         <Param name="grant_type" value="authorization_code" />
         <Param name="code" sessionKey="code" />
       </SenderPipe>
 
       <!-- Parse the response -->
-      <JsonValidatorPipe name="CustomerAccessTokenResponseValidator"
+      <JsonValidatorPipe name="customerAccessTokenResponseValidator"
         schema="schemas/ingCustomerAccessTokenResponse.json">
         <Forward name="failure" path="errorFormatter" />
       </JsonValidatorPipe>
 
       <!-- Extract and store required data from the response -->
-      <JsonPipe name="JsonToXmlCustomerAccessToken" />
-      <XsltPipe name="CustomerAccessTokenExtractor" xpathExpression="/root/access_token"
+      <JsonPipe name="jsonToXmlCustomerAccessToken" />
+      <XsltPipe name="customerAccessTokenExtractor" xpathExpression="/root/access_token"
         storeResultInSessionKey="CustomerAccessToken" preserveInput="true" />
 
-      <XsltPipe name="CustomerRefreshTokenExtractor" xpathExpression="/root/refresh_token"
+      <XsltPipe name="customerRefreshTokenExtractor" xpathExpression="/root/refresh_token"
         storeResultInSessionKey="CustomerRefreshToken" preserveInput="true" />
 
       <!-- Get the request date -->
-      <XsltPipe name="CustomerInformationRequestDate"
+      <XsltPipe name="customerInformationRequestDate"
         storeResultInSessionKey="CustomerInformationRequestDate"
         styleSheetName="dateformatter.xsl"
         getInputFromFixedValue="&lt;dummy /&gt;" />
 
       <!-- Calculate the signature -->
       <FixedResultPipe
-        name="CreateCustomerInformationRequestSignatureString"
+        name="createCustomerInformationRequestSignatureString"
         storeResultInSessionKey="SignatureString"
         returnString="SignatureString"
         replaceFixedParams="true">
-        <Param name="SignatureString"
+        <Param name="signatureString"
           pattern="(request-target): get /v3/accounts&#xa;date: {CustomerAccessTokenRequestDate}&#xa;digest: SHA-256=47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=" />
       </FixedResultPipe>
 
       <SignaturePipe
-        name="CustomerInformationRequestSignatureStringSigner"
+        name="customerInformationRequestSignatureStringSigner"
         keystore="/certs/signing.p12"
         keystoreAlias="ing"
         keystorePassword="Password123!"
         storeResultInSessionKey="CustomerAccessTokenSignature"
         getInputFromSessionKey="SignatureString" />
 
-      <SenderPipe name="CustomerInformationRequestSender">
+      <SenderPipe name="customerInformationRequestSender">
         <HttpSender
           url="https://api.sandbox.ing.com/v3/accounts"
           methodType="GET"
@@ -426,7 +407,7 @@
         <Param name="Content-Type" value="application/json" />
         <Param name="X-Request-ID" value="33a298e6-44c7-481f-94ae-fdc0321fcff3" />
         <Param name="Signature"
-          pattern='keyId="{ClientId}",algorithm="rsa-sha256",headers="(request-target) date digest",signature="{CustomerAccessTokenSignature}"' />
+          pattern='keyId="{clientId}",algorithm="rsa-sha256",headers="(request-target) date digest",signature="{CustomerAccessTokenSignature}"' />
         <Forward name="200" path="Success" />
         <Forward name="400" path="errorFormatter" />
         <Forward name="401" path="errorFormatter" />
@@ -440,9 +421,9 @@
     </Pipeline>
   </Adapter>
 
-  <Adapter name="AccessTokenAdapter">
-    <Receiver name="AccessTokenReceiver">
-      <JavaListener name="AccessTokenListener" />
+  <Adapter name="accessTokenAdapter">
+    <Receiver name="accessTokenReceiver">
+      <JavaListener name="accessTokenListener" />
     </Receiver>
 
     <Pipeline>
@@ -463,29 +444,29 @@
       <!--  -->
 
       <!-- fetch the GMT Time from an xslt funcion -->
-      <XsltPipe name="GMT Date Getter" storeResultInSessionKey="FormattedDateTime"
+      <XsltPipe name="applicationAccessTokenRequestDateGetter" storeResultInSessionKey="formattedDateTime"
         styleSheetName="dateformatter.xsl"
         getInputFromFixedValue="&lt;dummy /&gt;">
       </XsltPipe>
 
       <!-- Store the content of the sandbox certificate and key in a session key-->
-      <LocalFileSystemPipe name="ReadSigningCertificate"
+      <LocalFileSystemPipe name="readSigningCertificate"
         action="read"
         filename="${configurations.directory}/IngConfiguration/certs/example_client_signing.cer"
         storeResultInSessionKey="SigningCertificate" />
-      <LocalFileSystemPipe name="ReadSigningKey"
+      <LocalFileSystemPipe name="readSigningKey"
         action="read"
         filename="${configurations.directory}/IngConfiguration/certs/example_client_signing.key"
         storeResultInSessionKey="SigningKey" />
 
       <!-- Create hash the payload with sha256 -->
       <ChecksumPipe
-        name="SHA256"
+        name="applicationAccessTokenPayloadHasherSHA256"
         type="SHA256"
         getInputFromFixedValue="grant_type=client_credentials"
         storeResultInSessionKey="HashedPayload" />
       <!-- convert the hexstring to base64 with javascript -->
-      <SenderPipe name="HexStringToBase64" storeResultInSessionKey="PayloadDigest">
+      <SenderPipe name="applicationAccessTokenPayloadHashToBase64" storeResultInSessionKey="PayloadDigest">
         <JavascriptSender
           jsFileName="JavaScript/HexStringToBase64.js"
           jsFunctionName="hexToBase64">
@@ -495,16 +476,16 @@
 
       <!-- Create the signature string -->
       <FixedResultPipe
-        name="CreateSignatureString"
+        name="applicationAccessTokenSingatureStringFormatter"
         storeResultInSessionKey="SignatureString"
         returnString="SignatureString"
         replaceFixedParams="true">
         <Param name="SignatureString"
-          pattern="(request-target): post /oauth2/token&#xa;date: {FormattedDateTime}&#xa;digest: SHA-256={PayloadDigest}" />
+          pattern="(request-target): post /oauth2/token&#xa;date: {formattedDateTime}&#xa;digest: SHA-256={PayloadDigest}" />
       </FixedResultPipe>
       <!-- Sign the signature -->
       <SignaturePipe
-        name="SignatureStringSigner"
+        name="applicationAccessTokenSingatureStringSigner"
         keystore="/certs/signing.p12"
         keystoreAlias="ing"
         keystorePassword="Password123!"
@@ -513,7 +494,7 @@
       />
 
       <!-- Request an authorization token -->
-      <SenderPipe name="IngAuthorizationRequest">
+      <SenderPipe name="ingApplicationAccessTokenRequest">
         <HttpSender
           url="https://api.sandbox.ing.com/oauth2/token"
           methodType="POST"
@@ -524,7 +505,7 @@
           keystore="/certs/tls.p12"
           keystoreAlias="ing"
           keystorePassword="Password123!" />
-        <Param name="Date" sessionKey="FormattedDateTime" />
+        <Param name="Date" sessionKey="formattedDateTime" />
         <Param name="Digest" pattern="SHA-256={PayloadDigest}" />
         <Param name="TPP-Signature-Certificate" sessionKey="SigningCertificate" />
         <Param name="authorization"
@@ -539,23 +520,23 @@
       </SenderPipe>
 
       <!-- Parse the response -->
-      <JsonValidatorPipe name="IngAuthorizationTokenResponseValidator"
+      <JsonValidatorPipe name="ingApplicationAccessTokenResponseValidator"
         schema="schemas/ingAuthorizationTokenResponse.json">
         <Forward name="failure" path="ParseError" />
       </JsonValidatorPipe>
 
       <!-- Extract and store required data from the response -->
       <JsonPipe name="JsonToXml" />
-      <XsltPipe name="TokenExtractor" xpathExpression="/root/access_token"
+      <XsltPipe name="accessTokenExtractor" xpathExpression="/root/access_token"
         storeResultInSessionKey="AccessToken" preserveInput="true" />
-      <XsltPipe name="ClientIdExtractor" xpathExpression="/root/client_id"
-        storeResultInSessionKey="ClientId" />
+      <XsltPipe name="clientIdExtractor" xpathExpression="/root/client_id"
+        storeResultInSessionKey="clientId" />
 
-      <LocalFileSystemPipe name="WriteClientIdToFile" action="write" overwrite="true">
+      <LocalFileSystemPipe name="writeClientIdToFile" action="write" overwrite="true">
         <Param name="filename" value="${configurations.directory}/IngConfiguration/client_id.txt" />
       </LocalFileSystemPipe>
 
-      <LocalFileSystemPipe name="WriteAccessTokenToFile" action="write" overwrite="true"
+      <LocalFileSystemPipe name="writeAccessTokenToFile" action="write" overwrite="true"
         getInputFromSessionKey="AccessToken">
         <Param name="filename" value="${configurations.directory}/IngConfiguration/access_token.txt" />
       </LocalFileSystemPipe>
@@ -563,7 +544,7 @@
   </Adapter>
   <Scheduler>
     <!-- Refresh the token every 10 minutes (token is valid for 15 minutes) -->
-    <Job name="Refresh Access Token" javaListener="AccessTokenListener" function="sendMessage"
+    <Job name="applicationAccessTokenRefresher" javaListener="accessTokenListener" function="sendMessage"
       interval="600000" />
   </Scheduler>
 
