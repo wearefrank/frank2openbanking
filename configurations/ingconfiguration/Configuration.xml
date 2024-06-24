@@ -128,7 +128,7 @@
 
   <Adapter name="IngPaymentUrlAdapter">
     <Receiver name="IngPaymentRequestReceiver">
-      <ApiListener name="IngPaymentRequestListener" uriPattern="pay" />
+      <ApiListener name="IngPaymentRequestListener" uriPattern="ing/pis" />
     </Receiver>
 
     <Pipeline>
