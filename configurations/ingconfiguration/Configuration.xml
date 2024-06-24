@@ -272,7 +272,7 @@
 
   <Adapter name="CustomerAccessToken">
     <Receiver name="CustomerAccessTokenReceiver">
-      <ApiListener uriPattern="token" />
+      <ApiListener uriPattern="ing/token" />
     </Receiver>
     <Pipeline>
       <Exits>
