@@ -4,7 +4,7 @@
 >
   <Adapter name="IngAuthorization">
     <Receiver name="IngAuthorizationReceiver">
-      <ApiListener name="IngAuthorizationRequestListener" uriPattern="ing" headerParams="Location" />
+      <ApiListener name="IngAuthorizationRequestListener" uriPattern="ing/ais" headerParams="Location" />
     </Receiver>
 
     <Pipeline>
