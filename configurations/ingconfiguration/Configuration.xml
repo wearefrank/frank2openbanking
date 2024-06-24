@@ -23,12 +23,12 @@
       <!--  -->
       <!--  -->
 
-      <!-- read access token from /access_token.txt -->
+      <!-- read the application access token from /access_token.txt -->
       <LocalFileSystemPipe
         name="UrlReadAccessTokenFromFile"
         action="read"
         filename="${configurations.directory}/IngConfiguration/access_token.txt"
-        storeResultInSessionKey="AccessToken" />
+        storeResultInSessionKey="applicationAccessToken" />
 
       <!-- read ClientId from /client_id.txt -->
       <LocalFileSystemPipe
@@ -98,7 +98,7 @@
         <Param name="Digest" pattern="SHA-256=47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=" />
         <Param name="Signature"
           pattern='keyId="{ClientId}",algorithm="rsa-sha256",headers="(request-target) date digest",signature="{Signature}"' />
-        <Param name="Authorization" pattern="Bearer {AccessToken}" />
+        <Param name="Authorization" pattern="Bearer {applicationAccessToken}" />
         <Param name="Accept" value="application/json" />
 
         <Forward name="400" path="400" />
