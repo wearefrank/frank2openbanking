@@ -159,7 +159,7 @@
         name="UrlReadClientIdFromFile"
         action="read"
         filename="${configurations.directory}/IngConfiguration/client_id.txt"
-        storeResultInSessionKey="ClientId"
+        storeResultInSessionKey="clientId"
       />
 
       <!-- fetch the GMT Time from an xslt funcion -->
@@ -344,7 +344,7 @@
         name="ReadClientIdFromFile"
         action="read"
         filename="${configurations.directory}/IngConfiguration/client_id.txt"
-        storeResultInSessionKey="ClientId"
+        storeResultInSessionKey="clientId"
       />
 
       <!-- broken in 8.1.0, to fix move to 8.2.0 -->
