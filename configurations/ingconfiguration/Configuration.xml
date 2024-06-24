@@ -25,17 +25,17 @@
 
       <!-- read the application access token from /access_token.txt -->
       <LocalFileSystemPipe
-        name="UrlReadAccessTokenFromFile"
+        name="urlReadAccessTokenFromFile"
         action="read"
         filename="${configurations.directory}/IngConfiguration/access_token.txt"
         storeResultInSessionKey="applicationAccessToken" />
 
-      <!-- read ClientId from /client_id.txt -->
+      <!-- read application clientId from /client_id.txt -->
       <LocalFileSystemPipe
-        name="UrlReadClientIdFromFile"
+        name="urlRequestReadClientIdFromFile"
         action="read"
         filename="${configurations.directory}/IngConfiguration/client_id.txt"
-        storeResultInSessionKey="ClientId"
+        storeResultInSessionKey="clientId"
       />
 
       <!-- fetch the GMT Time from an xslt funcion -->
@@ -97,7 +97,7 @@
         <Param name="user-agent" value="frank2openbanking 0.0.1" />
         <Param name="Digest" pattern="SHA-256=47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=" />
         <Param name="Signature"
-          pattern='keyId="{ClientId}",algorithm="rsa-sha256",headers="(request-target) date digest",signature="{Signature}"' />
+          pattern='keyId="{clientId}",algorithm="rsa-sha256",headers="(request-target) date digest",signature="{Signature}"' />
         <Param name="Authorization" pattern="Bearer {applicationAccessToken}" />
         <Param name="Accept" value="application/json" />
 
@@ -187,8 +187,8 @@
       </SenderPipe>
 
       <FixedResultPipe name="authorizationHeader" storeResultInSessionKey="authorizationHeader"
-        returnString='keyId="{ClientId}",algorithm="rsa-sha256",headers="(request-target) date digest x-request-id",signature="{SignedSignature}"'>
-        <Param name="ClientId" sessionKey="ClientId" />
+        returnString='keyId="{clientId}",algorithm="rsa-sha256",headers="(request-target) date digest x-request-id",signature="{SignedSignature}"'>
+        <Param name="clientId" sessionKey="clientId" />
         <Param name="SignedSignature" sessionKey="HashedPayload" />
       </FixedResultPipe>
 
@@ -241,7 +241,7 @@
         <Param name="User-Agent" value="frank2openbanking 0.0.1" />
         <Param name="Digest" pattern="SHA-256={PayloadDigest}" />
         <Param name="Signature"
-          pattern='keyId="{ClientId}",algorithm="rsa-sha256",headers="(request-target) date digest x-request-id",signature="{Signature}"' />
+          pattern='keyId="{clientId}",algorithm="rsa-sha256",headers="(request-target) date digest x-request-id",signature="{Signature}"' />
         <Param name="Authorization" pattern="Bearer {AccessToken}" />
         <Param name="Accept" value="application/json" />
 
@@ -366,7 +366,7 @@
         <Param name="Accept" value="application/json" />
         <Param name="Content-Type" value="application/x-www-form-urlencoded" />
         <Param name="Signature"
-          pattern='keyId="{ClientId}",algorithm="rsa-sha256",headers="(request-target) date digest",signature="{CustomerAccessTokenSignature}"' />
+          pattern='keyId="{clientId}",algorithm="rsa-sha256",headers="(request-target) date digest",signature="{CustomerAccessTokenSignature}"' />
         <Param name="grant_type" value="authorization_code" />
         <Param name="code" sessionKey="code" />
       </SenderPipe>
@@ -426,7 +426,7 @@
         <Param name="Content-Type" value="application/json" />
         <Param name="X-Request-ID" value="33a298e6-44c7-481f-94ae-fdc0321fcff3" />
         <Param name="Signature"
-          pattern='keyId="{ClientId}",algorithm="rsa-sha256",headers="(request-target) date digest",signature="{CustomerAccessTokenSignature}"' />
+          pattern='keyId="{clientId}",algorithm="rsa-sha256",headers="(request-target) date digest",signature="{CustomerAccessTokenSignature}"' />
         <Forward name="200" path="Success" />
         <Forward name="400" path="errorFormatter" />
         <Forward name="401" path="errorFormatter" />
@@ -549,7 +549,7 @@
       <XsltPipe name="TokenExtractor" xpathExpression="/root/access_token"
         storeResultInSessionKey="AccessToken" preserveInput="true" />
       <XsltPipe name="ClientIdExtractor" xpathExpression="/root/client_id"
-        storeResultInSessionKey="ClientId" />
+        storeResultInSessionKey="clientId" />
 
       <LocalFileSystemPipe name="WriteClientIdToFile" action="write" overwrite="true">
         <Param name="filename" value="${configurations.directory}/IngConfiguration/client_id.txt" />
