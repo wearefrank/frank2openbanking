@@ -2,9 +2,9 @@
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:noNamespaceSchemaLocation="../FrankConfig.xsd"
 >
-  <Adapter name="IngAuthorization">
-    <Receiver name="IngAuthorizationReceiver">
-      <ApiListener name="IngAuthorizationRequestListener" uriPattern="ing/ais" headerParams="Location" />
+  <Adapter name="ingAuthorization">
+    <Receiver name="ingAuthorizationReceiver">
+      <ApiListener name="ingAuthorizationRequestListener" uriPattern="ing/ais" headerParams="Location" />
     </Receiver>
 
     <Pipeline>
